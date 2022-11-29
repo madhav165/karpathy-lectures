@@ -30,7 +30,7 @@ yenc = F.one_hot(ys, num_classes=num_char+1).float()
 g = torch.Generator().manual_seed(2147483647)
 W = torch.randn((num_char+1, num_char+1), generator=g, requires_grad=True) # first num represents the dimension of data and second number of neurons
 
-for k in range(300):
+for k in range(500):
     #forward pass
     logits = xenc @ W # @ is a matrix multiplication operator in Pytorch. Intepreted as log counts for bigrams
     # softmax steps
