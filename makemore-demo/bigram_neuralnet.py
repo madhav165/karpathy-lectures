@@ -36,7 +36,7 @@ for k in range(200):
     # softmax steps
     counts = logits.exp() # equivalent to N
     probs = counts / counts.sum(1, keepdims=True)
-    loss = -probs[torch.arange(xs.shape[0]), ys].log().mean()
+    loss = -probs[torch.arange(xs.shape[0]), ys].log().mean() + 0.01 * (W**2).mean()
 
     print(loss.item())
 
