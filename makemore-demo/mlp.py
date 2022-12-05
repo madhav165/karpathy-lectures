@@ -46,7 +46,7 @@ g = torch.Generator().manual_seed(2147483647)
 C = torch.randn((vocab_size, n_embd), generator=g)
 W1 = torch.randn((block_size * n_embd, n_hidden), generator=g) * (5/3) / (block_size * n_embd)**0.5
 # b1 = torch.randn(n_hidden, generator=g) * 0.01
-W2 = torch.randn((n_hidden, vocab_size), generator=g) * (5/3) / n_hidden**0.5
+W2 = torch.randn((n_hidden, vocab_size), generator=g) * 0.01
 b2 = torch.randn(vocab_size, generator=g) * 0
 
 bngain = torch.ones((1, n_hidden))
