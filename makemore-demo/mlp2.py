@@ -176,19 +176,19 @@ plt.legend(legends)
 plt.title('activation distribution')
 plt.show()
 
-# visualize histograms
-plt.figure(figsize=(20,4))
-legends=[]
-for i, layer in enumerate(layers[:-1]):
-    if isinstance(layer, Tanh):
-        t = layer.out.grad
-        print('layer %d (%10s): mean %+f, std: %e' % (i, layer.__class__.__name__, t.mean(), t.std()))
-        hy, hx = torch.histogram(t, density=True)
-        plt.plot(hx[:-1].detach(), hy.detach())
-        legends.append(f'layer {i} ({layer.__class__.__name__})')
-plt.legend(legends)
-plt.title('gradient distribution')
-plt.show()
+# # visualize histograms
+# plt.figure(figsize=(20,4))
+# legends=[]
+# for i, layer in enumerate(layers[:-1]):
+#     if isinstance(layer, Tanh):
+#         t = layer.out.grad
+#         print('layer %d (%10s): mean %+f, std: %e' % (i, layer.__class__.__name__, t.mean(), t.std()))
+#         hy, hx = torch.histogram(t, density=True)
+#         plt.plot(hx[:-1].detach(), hy.detach())
+#         legends.append(f'layer {i} ({layer.__class__.__name__})')
+# plt.legend(legends)
+# plt.title('gradient distribution')
+# plt.show()
 
 # visualize histograms
 plt.figure(figsize=(20,4))
