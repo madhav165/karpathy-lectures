@@ -141,8 +141,8 @@ for i in range(max_steps):
     loss = F.cross_entropy(x, Yb)
 
     # backward pass
-    for layer in layers:
-        layer.out.retain_grad() # remove after debug
+    # for layer in layers:
+    #     layer.out.retain_grad() # remove after debug
     for p in parameters:
         p.grad = None
     loss.backward()
@@ -159,8 +159,8 @@ for i in range(max_steps):
     with torch.no_grad():
         ud.append([(lr * p.grad.std() / p.std()).log10().item() for p in parameters])
 
-    if i > 1000:
-        break
+    # if i > 1000:
+    #     break
 
 # visualize histogram
 plt.figure(figsize=(20,4))
