@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 
 random.seed(42)
 
-words = open('sanskrit_names.txt', 'r').read().splitlines()
+words = open('sanskrit_names.txt', 'r', encoding="utf8").read().splitlines()
 
 chars = sorted(list(set(''.join(words))))
 num_char = len(chars)
+vocab_size = num_char + 1
 stoi = {s:i+1 for i, s in enumerate(chars)}
 stoi['.'] = 0
 itos = {i:s for s, i in stoi.items()}
@@ -37,42 +38,56 @@ Xtr, Ytr = build_dataset(words[:n1])
 Xdev, Ydev = build_dataset(words[n1:n2])
 Xte, Yte = build_dataset(words[n2:])
 
+
+n_embd = 5
+n_hidden = 50
+
 g = torch.Generator().manual_seed(2147483647)
+C = torch.randn((vocab_size, n_embd), generator=g)
+W1 = torch.randn((block_size * n_embd, n_hidden), generator=g) * (5/3) / (block_size * n_embd)**0.5
+# b1 = torch.randn(n_hidden, generator=g) * 0.01
+W2 = torch.randn((n_hidden, vocab_size), generator=g) * (5/3) / n_hidden**0.5
+b2 = torch.randn(vocab_size, generator=g) * 0
 
-d = 2
-C = torch.randn((num_char + 1, d), generator=g)
+bngain = torch.ones((1, n_hidden))
+bnbias = torch.zeros((1, n_hidden))
+bnmean_running = torch.zeros((1, n_hidden))
+bnstd_running = torch.ones((1, n_hidden))
 
-W1 = torch.randn((block_size * d, 50), generator=g)
-b1 = torch.randn(50, generator=g)
-W2 = torch.randn((50, num_char + 1), generator=g)
-b2 = torch.randn(num_char + 1, generator=g)
-
-parameters = [C, W1, b1, W2, b2]
+parameters = [C, W1, W2, b2, bngain, bnbias]
 for p in parameters:
     p.requires_grad = True
     
-batch_size = 64
-
 # print(sum(p.nelement() for p in parameters)) # prints total parameters
 # lre = torch.linspace(-3, 0, 100000)
 # lrs = 10 ** lre
 
 # lri = []
-# lossi = []
+lossi = []
 # stepi = []
 
-lr = 10 ** -0.7
-# lr = 0.1
+max_steps = 200000
+batch_size = 32
 
-for i in range(200000):
+for i in range(max_steps):
     # minibatch construct
     ix = torch.randint(0, Xtr.shape[0], (batch_size, ), generator=g)
 
     # forward pass
     emb = C[Xtr[ix]]
     # emb = torch.cat(torch.unbind(emb, 1), 1)
-    # emb = emb.view(-1, block_size * d) # more efficient than above
-    h =  torch.tanh(emb.view(-1, block_size * d) @ W1 + b1)
+    # emb = emb.view(-1, block_size * n_embd) # more efficient than above
+    embcat = emb.view(emb.shape[0], -1)
+    hpreact = embcat @ W1 #+ b1
+    bnmeani = hpreact.mean(0, keepdim=True)
+    bnstdi = hpreact.std(0, keepdim=True)
+    hpreact = bngain * ((hpreact - bnmeani) / bnstdi) + bnbias # batch normalization usually added after linear on conv layers  
+
+    with torch.no_grad():
+        bnmean_running = 0.999 * bnmean_running + 0.001 * bnmeani
+        bnstd_running = 0.999 * bnstd_running + 0.001 * bnstdi
+
+    h =  torch.tanh(hpreact)
     logits = h @ W2 + b2
     loss = F.cross_entropy(logits, Ytr[ix])
 
@@ -83,15 +98,23 @@ for i in range(200000):
 
     # update
     # lr = lrs[i]
-    if i % 100000 == 0 and i > 0:
-        lr = lr/10
+    lr = 10 ** -0.7 if i < 100000 else 0.02
     for p in parameters:
         p.data += -lr * p.grad
 
     # track stats
+    if i % 10000 == 0:
+        print(f'{i:7d}/{max_steps:7d}: {loss.item():.4f}')
     # lri.append(lre[i])
-    # lossi.append(loss.log10().item())
+    lossi.append(loss.log10().item())
     # stepi.append(i)
+
+    # break
+
+# # plotting h
+# plt.hist(h.view(-1).tolist(), 50)
+# plt.figure(figsize=(20,10))
+# plt.imshow(h.abs() > 0.99, cmap='gray', interpolation='nearest')
 
 # plt.plot(lri, lossi)
 # plt.show()
@@ -99,7 +122,6 @@ for i in range(200000):
 # plt.plot(stepi, lossi)
 # plt.show()
 
-@torch.nograd()
 def split_loss(split):
     x, y = {
         'train': (Xtr, Ytr),
@@ -108,19 +130,23 @@ def split_loss(split):
     }[split]
     emb = C[x]
     embcat = emb.view(emb.shape[0], -1)
-    h = torch.tanh(embcat @ W1 + b1)
+    hpreact = embcat @ W1 #+ b1
+    hpreact = bngain * ((hpreact - hpreact.mean(0, keepdim=True)) / hpreact.std(0, keepdim=True)) + bnbias
+    h = torch.tanh(hpreact)
     logits = h @ W2 + b2
     loss = F.cross_entropy(logits, y)
     print(split, loss.item())
 
-split_loss('train')
-split_loss('val')
+with torch.no_grad():
+    split_loss('train')
+    split_loss('val')
 
 plt.figure(figsize=(8,8))
 plt.scatter(C[:,0].data, C[:,1].data, s=200)
 for i in range(C.shape[0]):
     plt.text(C[i,0].item(), C[i, 1].item(), itos[i], ha='center', va='center', color='white')
 plt.grid('minor')
+# plt.show()
 plt.savefig('mlp_embeddings.png')
 
 # sample from model
@@ -129,7 +155,10 @@ for _ in range(20):
     context = [0] * block_size
     while True:
         emb = C[torch.tensor([context])]
-        h =  torch.tanh(emb.view(1, -1) @ W1 + b1)
+        embcat = emb.view(emb.shape[0], -1)
+        hpreact = embcat @ W1 #+ b1
+        hpreact = bngain * ((hpreact - bnmean_running) / bnstd_running ) + bnbias
+        h = torch.tanh(hpreact)
         logits = h @ W2 + b2
         probs = F.softmax(logits, dim=1)
         ix = torch.multinomial(probs, num_samples=1, generator=g).item()
