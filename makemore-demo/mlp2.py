@@ -103,16 +103,17 @@ g = torch.Generator().manual_seed(2147483647)
 
 C = torch.randn((vocab_size, n_embd), generator=g)
 layers = [
-    Linear(n_embd * block_size, n_hidden), Tanh(),
-    Linear(n_hidden, n_hidden), Tanh(),
-    Linear(n_hidden, n_hidden), Tanh(),
-    Linear(n_hidden, n_hidden), Tanh(),
-    Linear(n_hidden, n_hidden), Tanh(),
-    Linear(n_hidden, vocab_size)
+    Linear(n_embd * block_size, n_hidden), BatchNorm1d(n_hidden), Tanh(),
+    Linear(n_hidden, n_hidden), BatchNorm1d(n_hidden), Tanh(),
+    Linear(n_hidden, n_hidden), BatchNorm1d(n_hidden), Tanh(),
+    Linear(n_hidden, n_hidden), BatchNorm1d(n_hidden), Tanh(),
+    Linear(n_hidden, n_hidden), BatchNorm1d(n_hidden), Tanh(),
+    Linear(n_hidden, vocab_size), BatchNorm1d(vocab_size)
 ]
 
 with torch.no_grad():
-    layers[-1].weight *= 0.1
+    layers[-1].gamma *= 0.1 # if last layer is batchnorm
+    # layers[-1].weight *= 0.1 # if last layer is not batchnorm
     for layer in layers[:-1]:
         if isinstance(layer, Linear):
             layer.weight *= 5/3
@@ -125,6 +126,7 @@ for p in parameters:
 max_steps = 200000
 batch_size = 32
 lossi = []
+ud = []
 
 for i in range(max_steps):
     # minibatch construct
@@ -154,8 +156,11 @@ for i in range(max_steps):
     if i % 10000 == 0:
         print(f'{i:7d}/{max_steps:7d}: {loss.item():.4f}')
     lossi.append(loss.log10().item())
+    with torch.no_grad():
+        ud.append([(lr * p.grad.std() / p.std()).log10().item() for p in parameters])
 
-    break
+    if i > 1000:
+        break
 
 # visualize histogram
 plt.figure(figsize=(20,4))
@@ -191,13 +196,24 @@ legends=[]
 for i, p in enumerate(parameters):
     t = p.grad
     if p.ndim == 2:
-        t = layer.out.grad
         print('weight %10s | mean %+f | std: %e | grad:data ratio %e' % (tuple(p.shape), t.mean(), t.std(), t.std() / p.std()))
         hy, hx = torch.histogram(t, density=True)
         plt.plot(hx[:-1].detach(), hy.detach())
         legends.append(f'{i} ({tuple(p.shape)})')
 plt.legend(legends)
 plt.title('weights gradient distribution')
+plt.show()
+
+# visualize histograms
+plt.figure(figsize=(20,4))
+legends=[]
+for i, p in enumerate(parameters):
+    if p.ndim == 2:
+        plt.plot([ud[j][i] for j in range(len(ud))])
+        legends.append('param % d' % i)
+plt.plot([0, len(ud)], [-3, -3], 'k')
+plt.legend(legends)
+plt.title('update ratios')
 plt.show()
 
 @torch.no_grad()
