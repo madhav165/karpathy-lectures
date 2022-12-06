@@ -162,19 +162,19 @@ for i in range(max_steps):
     # if i > 1000:
     #     break
 
-# visualize histogram
-plt.figure(figsize=(20,4))
-legends=[]
-for i, layer in enumerate(layers[:-1]):
-    if isinstance(layer, Tanh):
-        t = layer.out
-        print('layer %d (%10s): mean %+.2f, std: %.2f, saturated: %.2f%%' % (i, layer.__class__.__name__, t.mean(), t.std(), (t.abs() > 0.97).float().mean()*100))
-        hy, hx = torch.histogram(t, density=True)
-        plt.plot(hx[:-1].detach(), hy.detach())
-        legends.append(f'layer {i} ({layer.__class__.__name__})')
-plt.legend(legends)
-plt.title('activation distribution')
-plt.show()
+# # visualize histogram
+# plt.figure(figsize=(20,4))
+# legends=[]
+# for i, layer in enumerate(layers[:-1]):
+#     if isinstance(layer, Tanh):
+#         t = layer.out
+#         print('layer %d (%10s): mean %+.2f, std: %.2f, saturated: %.2f%%' % (i, layer.__class__.__name__, t.mean(), t.std(), (t.abs() > 0.97).float().mean()*100))
+#         hy, hx = torch.histogram(t, density=True)
+#         plt.plot(hx[:-1].detach(), hy.detach())
+#         legends.append(f'layer {i} ({layer.__class__.__name__})')
+# plt.legend(legends)
+# plt.title('activation distribution')
+# plt.show()
 
 # # visualize histograms
 # plt.figure(figsize=(20,4))
@@ -190,31 +190,31 @@ plt.show()
 # plt.title('gradient distribution')
 # plt.show()
 
-# visualize histograms
-plt.figure(figsize=(20,4))
-legends=[]
-for i, p in enumerate(parameters):
-    t = p.grad
-    if p.ndim == 2:
-        print('weight %10s | mean %+f | std: %e | grad:data ratio %e' % (tuple(p.shape), t.mean(), t.std(), t.std() / p.std()))
-        hy, hx = torch.histogram(t, density=True)
-        plt.plot(hx[:-1].detach(), hy.detach())
-        legends.append(f'{i} ({tuple(p.shape)})')
-plt.legend(legends)
-plt.title('weights gradient distribution')
-plt.show()
+# # visualize histograms
+# plt.figure(figsize=(20,4))
+# legends=[]
+# for i, p in enumerate(parameters):
+#     t = p.grad
+#     if p.ndim == 2:
+#         print('weight %10s | mean %+f | std: %e | grad:data ratio %e' % (tuple(p.shape), t.mean(), t.std(), t.std() / p.std()))
+#         hy, hx = torch.histogram(t, density=True)
+#         plt.plot(hx[:-1].detach(), hy.detach())
+#         legends.append(f'{i} ({tuple(p.shape)})')
+# plt.legend(legends)
+# plt.title('weights gradient distribution')
+# plt.show()
 
-# visualize histograms
-plt.figure(figsize=(20,4))
-legends=[]
-for i, p in enumerate(parameters):
-    if p.ndim == 2:
-        plt.plot([ud[j][i] for j in range(len(ud))])
-        legends.append('param % d' % i)
-plt.plot([0, len(ud)], [-3, -3], 'k')
-plt.legend(legends)
-plt.title('update ratios')
-plt.show()
+# # visualize histograms
+# plt.figure(figsize=(20,4))
+# legends=[]
+# for i, p in enumerate(parameters):
+#     if p.ndim == 2:
+#         plt.plot([ud[j][i] for j in range(len(ud))])
+#         legends.append('param % d' % i)
+# plt.plot([0, len(ud)], [-3, -3], 'k')
+# plt.legend(legends)
+# plt.title('update ratios')
+# plt.show()
 
 @torch.no_grad()
 def split_loss(split):
